@@ -14,10 +14,13 @@ mettu (మెట్లు, /ˈmɛt.t̪u/) is a simple static site generator that
 ## Setup
 1. Clone the repository
 2. Install the required dependencies
+
    ```bash
-   pip install -r requirements.txt
-   npm install -D vite tailwindcss daisyui @tailwindcss/vite postcss glob 
+   npm install
    ```
+
+   - Note: Python dependencies are installed by default by the initialising script.
+
 3. Create a `.env` file in the root directory and set the environment variables "PY_EXECUTABLE" and "PYGMENTIZE_THEME".
 4. Edit the `config.yaml` file to set your site name, author, and navigation links.
 5. Create markdown files in the `content` directory. Each file should start similarly to the given examples.
@@ -27,7 +30,7 @@ mettu (మెట్లు, /ˈmɛt.t̪u/) is a simple static site generator that
    ```bash
    npm run dev
    ```
-9. Build the site for production
+9.  Build the site for production
    ```bash
    npm run build
    ```

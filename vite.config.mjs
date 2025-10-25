@@ -22,6 +22,22 @@ processImages(inputDir, outputDir).catch(e =>
 
 const pythonexecutable = process.env.PY_EXECUTABLE;
 
+if (!pythonexecutable) {
+  throw new Error('Need to set PY_EXECUTABLE environment variable to run build.');
+}
+
+const ensurePythonRequirements = () => {
+  const requirementsPath = path.join(__dirname, 'requirements.txt');
+  try {
+    console.log('Installing python dependencies...');
+    execSync(`${pythonexecutable} -m pip install -r "${requirementsPath}"`, { stdio: 'inherit' });
+  } catch (e) {
+    console.error('Failed to install Python dependencies. Verify interpreter path.', e);
+  }
+};
+
+ensurePythonRequirements();
+
 
 const py_build_plugin = () => {
   let ready = false;
@@ -35,7 +51,7 @@ const py_build_plugin = () => {
     execSync(`pygmentize -S ${syntaxTheme} -f html > ${syntaxCssPath}`);
     console.log('Generated syntax.css');
   } catch (e) {
-    console.error('Failed to generate syntax.css. Make sure "pygmentize" is installed and in your PATH.', e);
+    console.error('Failed to generate syntax.css.', e);
   }
 
   const handleExit = () => {
