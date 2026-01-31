@@ -9,6 +9,7 @@ import shutil
 import hashlib
 import json
 import re
+from collections import defaultdict
 from html import escape
 from html.parser import HTMLParser
 try:
@@ -600,9 +601,7 @@ def render_page(
     site_config,
     templates,
     image_manifest=None,
-    all_posts=None,
-    all_team_members=None,
-    all_doggos=None,
+    **context_data,
 ):
     layout = page_config.get("layout") or "post"
     if layout not in templates:
@@ -615,12 +614,7 @@ def render_page(
     template = templates[layout]
 
     render_details = {"site": site_config, "page": page_config, "content": html_data}
-    if layout == "blog" and all_posts is not None:
-        render_details["posts"] = all_posts
-    if layout == "team" and all_team_members is not None:
-        render_details["team_members"] = all_team_members
-    if layout == "doggos" and all_doggos is not None:
-        render_details["doggos"] = all_doggos
+    render_details.update(context_data)
 
     final_html = template.render(render_details)
     final_html = replace_images_with_processed(final_html, image_manifest)
@@ -883,8 +877,8 @@ def main():
         current_slugs = set()
         previous_slugs = load_previous_slugs()
 
-        all_team_members = []
-        all_doggos = []
+        # Dynamic collections: layout -> list of pages
+        collections = defaultdict(list)
 
         for root, _, files in os.walk(CONTENT_DIR):
             for filename in files:
@@ -909,14 +903,13 @@ def main():
                 pages.append({"data": page_data, "content": html_content})
                 sitemap_list.append(page_data["url"])
                 
-                if page_data.get("layout") == "post":
-                    all_posts.append(page_data)
-                    for tag in page_data.get("tags") or []:
-                         tags.setdefault(tag, []).append(page_data)
-                elif page_data.get("layout") == "team-member":
-                    all_team_members.append(page_data)
-                elif page_data.get("layout") == "doggo-profile":
-                    all_doggos.append(page_data)
+                layout = page_data.get("layout")
+                if layout:
+                    collections[layout].append(page_data)
+                    
+                    if layout == "post":
+                        for tag in page_data.get("tags") or []:
+                             tags.setdefault(tag, []).append(page_data)
 
         removed = previous_slugs - current_slugs
         for slug in removed:
@@ -929,36 +922,50 @@ def main():
 
         save_current_slugs(current_slugs)
 
-        all_posts.sort(
-            key=lambda x: (
-                datetime.strptime(x["date"], "%Y-%m-%d")
-                if x.get("date")
-                else datetime.min
-            ),
-            reverse=True,
-        )
-        
-        # Sort team members by 'order' or name
-        all_team_members.sort(key=lambda x: x.get("order", 999))
-        
-        # Sort doggos by 'order' or name
-        all_doggos.sort(key=lambda x: x.get("order", 999))
+        # Generic date sorting for all collections
+        for layout_name, items in collections.items():
+            if not items:
+                continue
+            
+            # Check if any item has a date
+            has_date = any(x.get("date") for x in items)
+            has_order = any(x.get("order") is not None for x in items)
+            
+            if has_date:
+                 items.sort(
+                    key=lambda x: (
+                        datetime.strptime(x["date"], "%Y-%m-%d")
+                        if x.get("date") and isinstance(x.get("date"), str)
+                        else datetime.min
+                    ),
+                    reverse=True,
+                )
+            elif has_order:
+                 items.sort(key=lambda x: x.get("order", 999))
+            else:
+                 pass
+
+        # Prepare pluralized context keys
+        # e.g. post -> posts, team-member -> team_members
+        context_data = {}
+        for k, v in collections.items():
+            w = k.replace("-", "_") + "s"
+            context_data[w] = v
 
         for page in pages:
-            if page["data"].get("layout") == "team-member":
-                continue
-            if page["data"].get("layout") == "doggo-profile":
-                continue
-
+            # Skip items that are just data collections if needed?
+            # The user previously had explicit skips for team-member/doggo-profile.
+            # If we want to be fully agnostic, we should probably NOT skip them unless they don't have a template.
+            # render_page checks for template availability and skips if missing.
+            # So it is safe to just try rendering everything.
+            
             render_page(
                 page["data"],
                 page["content"],
                 site_config,
                 templates,
                 image_manifest=image_manifest,
-                all_posts=all_posts,
-                all_team_members=all_team_members,
-                all_doggos=all_doggos,
+                **context_data
             )
 
         tag_template = templates.get("tags") or templates.get("tags.html")

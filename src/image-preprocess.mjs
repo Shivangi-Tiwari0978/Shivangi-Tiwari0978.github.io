@@ -51,10 +51,22 @@ export async function processImages(inputDir, outputDir, siteConfig = {}) {
     const s3 = getS3Client();
     const bucket = process.env.S3_BUCKET;
 
-    const entries = await fs.readdir(inputDir, { withFileTypes: true });
-    const files = entries
-        .filter(e => e.isFile() && /\.(png|jpe?g|gif)$/i.test(e.name))
-        .map(e => e.name);
+    // Recursive file gathering
+    async function getFiles(dir, baseDir) {
+        let results = [];
+        const entries = await fs.readdir(dir, { withFileTypes: true });
+        for (const entry of entries) {
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+                results = results.concat(await getFiles(fullPath, baseDir));
+            } else if (/\.(png|jpe?g|gif)$/i.test(entry.name)) {
+                results.push(path.relative(baseDir, fullPath));
+            }
+        }
+        return results;
+    }
+
+    const files = await getFiles(inputDir, inputDir);
 
     // { originalFile: { format: [{ width, path }] } }
     let manifest = {};
@@ -90,6 +102,10 @@ export async function processImages(inputDir, outputDir, siteConfig = {}) {
                 const handler = FORMAT_HANDLERS[ext];
                 const outFile = `${baseName}-${w}.${ext}`;
                 const outPath = path.join(outputDir, outFile);
+                
+                // Ensure output subdirectory exists
+                await fs.mkdir(path.dirname(outPath), { recursive: true });
+
                 const key = `assets/images/${outFile}`;
                 
                 let publicUrl;
