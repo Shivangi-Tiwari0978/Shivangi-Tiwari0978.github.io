@@ -1,7 +1,7 @@
 ---
 title: "Home"
 layout: "main"
-hero_title: "<your name>"
+hero_title: "Shivangi Tiwari"
 hero_subtitle: "about you"
 hero_image: "/assets/images/hero.png"
 social_links:

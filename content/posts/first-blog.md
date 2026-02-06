@@ -1,10 +1,11 @@
 ---
 title: "My First Blog Post"
-date: "2025-07-30"
+date: "2026-02-06"
 layout: "post"
 tags:
     - "introduction"
     - "demo"
 ---
 
-This is the content of my first post. Welcome to the blog!
+Still figuring out life and tech apparently now...
+Let's see how that pans out.

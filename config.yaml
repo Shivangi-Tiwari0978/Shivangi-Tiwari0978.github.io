@@ -3,10 +3,12 @@ author: "you"
 base_url: "you.com"
 
 theme:
-  default: "hacktoberfest25"
+  default: "synthwave"
   include:
     - "hacktoberfest25"
     - "dracula"
+    - "synthwave"
+    - "retro"
   custom:
     hacktoberfest25: |
       /* Raw CSS Theme */
@@ -40,6 +42,41 @@ theme:
       --border: 1px;
       --depth: 0;
       --noise: 1;
+    
+    fancyraccoon: |
+      /* Raw CSS Theme */
+      default: false;
+      prefersdark: false;
+      color-scheme: "light";
+      --color-base-100: oklch(98% 0.022 95.277);
+      --color-base-200: oklch(96% 0.059 95.617);
+      --color-base-300: oklch(92% 0.12 95.746);
+      --color-base-content: oklch(41% 0.112 45.904);
+      --color-primary: oklch(0% 0 0);
+      --color-primary-content: oklch(100% 0 0);
+      --color-secondary: oklch(70% 0.191 22.216);
+      --color-secondary-content: oklch(25% 0.092 26.042);
+      --color-accent: oklch(74% 0.238 322.16);
+      --color-accent-content: oklch(29% 0.136 325.661);
+      --color-neutral: oklch(27% 0.077 45.635);
+      --color-neutral-content: oklch(98% 0.022 95.277);
+      --color-info: oklch(74% 0.16 232.661);
+      --color-info-content: oklch(29% 0.066 243.157);
+      --color-success: oklch(79% 0.209 151.711);
+      --color-success-content: oklch(26% 0.065 152.934);
+      --color-warning: oklch(85% 0.199 91.936);
+      --color-warning-content: oklch(28% 0.066 53.813);
+      --color-error: oklch(70% 0.191 22.216);
+      --color-error-content: oklch(25% 0.092 26.042);
+      --radius-selector: 0.25rem;
+      --radius-field: 0.25rem;
+      --radius-box: 0.25rem;
+      --size-selector: 0.25rem;
+      --size-field: 0.25rem;
+      --border: 1px;
+      --depth: 1;
+      --noise: 1;
+
 fonts:
   imports:
     - "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
@@ -75,3 +112,5 @@ navigation:
     url: "/"
   - name: "Blog"
     url: "/blog/"
+  - name: "About"
+    url: "/about/"
