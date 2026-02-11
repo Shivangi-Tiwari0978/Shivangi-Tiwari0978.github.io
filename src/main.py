@@ -37,16 +37,19 @@ GENERATED_SYNTAX_PATH = "assets/css/syntax.css"
 
 def load_previous_slugs():
     try:
-        with open(PAGE_SLUG_CACHE, "r") as f:
+        with open(PAGE_SLUG_CACHE, "r", encoding="utf-8") as f:
             return set(json.load(f))
-    except:
+    except (FileNotFoundError, json.JSONDecodeError):
         return set()
 
 
 def save_current_slugs(slugs):
     os.makedirs(os.path.dirname(PAGE_SLUG_CACHE), exist_ok=True)
-    with open(PAGE_SLUG_CACHE, "w", encoding="utf-8") as f:
-        json.dump(sorted(slugs), f)
+    try:
+        with open(PAGE_SLUG_CACHE, "w", encoding="utf-8") as f:
+            json.dump(sorted(slugs), f)
+    except OSError as e:
+        print(f"Warning: Could not save slug cache: {e}")
 
 
 def clean_output(directory):
@@ -62,40 +65,56 @@ def clean_output(directory):
         "node_modules",
         "src",
         "templates",
+        "scripts",
+        "config.yaml",
+        "package.json",
+        "package-lock.json",
+        "requirements.txt",
+        "vite.config.mjs",
+        "README.md",
+        "LICENSE.md",
+        "CONTRIBUTING.md",
+        ".env",
+        ".env.example",
+        ".gitignore",
+        ".dockerignore",
+        "Dockerfile",
     }
-    generated_roots = {"blog", "tags", "posts"}
+    
+    preserved_files = {
+        "config.yaml",
+        "package.json",
+        "package-lock.json",
+        "requirements.txt",
+        "vite.config.mjs",
+        "README.md",
+        "LICENSE.md",
+        "CONTRIBUTING.md",
+        ".env",
+        ".env.example",
+        ".gitignore",
+    }
 
-    removed_any = False
-    for root, _, files in os.walk(directory, topdown=False):
-        rel_root = os.path.relpath(root, directory)
-        if rel_root == ".":
-            rel_root = ""
-        top_level = rel_root.split(os.sep)[0] if rel_root else ""
-
-        if top_level in preserved_roots:
+    for name in os.listdir(directory):
+        path = os.path.join(directory, name)
+        
+        if name in preserved_roots or name in preserved_files:
+            continue
+            
+        if name.startswith(".") and name not in preserved_roots:
             continue
 
-        for filename in files:
-            delete_file = False
-            if top_level in generated_roots:
-                delete_file = True
-            elif filename == "index.html" or filename.endswith(".xml"):
-                delete_file = True
+        try:
+            if os.path.isfile(path) or os.path.islink(path):
+                os.remove(path)
+                print(f"Deleted file: {path}")
+            elif os.path.isdir(path):
+                shutil.rmtree(path)
+                print(f"Deleted directory: {path}")
+        except Exception as e:
+            print(f"Failed to delete {path}: {e}")
 
-            if delete_file:
-                file_path = os.path.join(root, filename)
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-                    removed_any = True
-                    print(f"Deleted: {file_path}")
-
-        if rel_root and top_level not in preserved_roots and not os.listdir(root):
-            os.rmdir(root)
-            removed_any = True
-            print(f"Deleted empty directory: {root}")
-
-    if not removed_any:
-        print("No generated files found to delete.")
+    print("Cleanup complete.")
 
 
 def has_file_changed(filepath, cache_dir=".cache"):
@@ -114,6 +133,42 @@ def has_file_changed(filepath, cache_dir=".cache"):
     with open(cache_file, "w", encoding="utf-8") as f:
         f.write(file_hash)
     return True
+
+
+def safe_parse_date(date_value):
+
+    if not date_value:
+        return None
+
+    if isinstance(date_value, datetime):
+        return date_value
+
+    if isinstance(date_value, str):
+        formats = [
+            "%Y-%m-%d",
+            "%Y-%m-%dT%H:%M:%S",
+            "%Y-%m-%dT%H:%M:%S.%f",
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M:%S.%f",
+            "%Y/%m/%d",
+            "%d-%m-%Y",
+            "%d/%m/%Y",
+            "%Y-%m",
+            "%Y",
+        ]
+        for fmt in formats:
+            try:
+                return datetime.strptime(date_value, fmt)
+            except ValueError:
+                continue
+        
+        try:
+            return datetime.fromisoformat(date_value)
+        except ValueError:
+            pass
+
+    print(f"Warning: Could not parse date: {date_value}")
+    return None
 
 
 def _ensure_sequence(value):
@@ -175,7 +230,7 @@ def normalize_theme_config(config):
 
     normalized = dict(base)
     normalized["default"] = default_theme
-    normalized["include"] = ordered  # type: ignore[assignment]
+    normalized["include"] = ordered  
 
     config["theme"] = normalized
     return normalized
@@ -250,8 +305,11 @@ def write_theme_file(config, output_path=GENERATED_THEME_PATH):
 
     css_content = "\n\n".join(css_blocks) + "\n"
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(css_content)
+    try:
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(css_content)
+    except OSError as e:
+        print(f"Error: Failed to write theme file {output_path}: {e}")
 
 
 def _normalize_font_family(value):
@@ -369,8 +427,11 @@ def write_font_file(config, output_path=GENERATED_FONTS_PATH):
     css_output = "\n".join(lines).rstrip() + "\n"
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(css_output)
+    try:
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(css_output)
+    except OSError as e:
+        print(f"Error: Failed to write font file {output_path}: {e}")
 
 
 def resolve_pygments_theme(config):
@@ -413,8 +474,11 @@ def generate_syntax_css(theme, output_path=GENERATED_SYNTAX_PATH):
 
     css = formatter.get_style_defs(".highlight")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(css + "\n")
+    try:
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(css + "\n")
+    except OSError as e:
+        print(f"Error: Failed to write syntax CSS {output_path}: {e}")
     return active_theme
 
 
@@ -518,8 +582,8 @@ def parse_file(filepath, pygments_theme, markdown_config=None):
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             file_content = f.read()
-    except FileNotFoundError:
-        print(f"Error: File not found - {filepath}")
+    except OSError as e:
+        print(f"Error: Could not read file {filepath}: {e}")
         return None, None
 
     if file_content.startswith("---"):
@@ -561,14 +625,11 @@ def parse_file(filepath, pygments_theme, markdown_config=None):
 
     # Normalize date to YYYY-MM-DD string
     if "date" in page_config and page_config["date"]:
-        if isinstance(page_config["date"], datetime):
-            page_config["date"] = page_config["date"].strftime("%Y-%m-%d")
+        parsed_date = safe_parse_date(page_config["date"])
+        if parsed_date:
+            page_config["date"] = parsed_date.strftime("%Y-%m-%d")
         else:
-            try:
-                parsed = datetime.fromisoformat(str(page_config["date"]))
-                page_config["date"] = parsed.strftime("%Y-%m-%d")
-            except Exception:
-                pass
+            pass
 
     return page_config, html_data
 
@@ -580,7 +641,10 @@ def tag_pages(tag_template, site_config, tags=None, image_manifest=None):
 
     for tag_name, posts_with_tag in tags.items():
         posts_with_tag.sort(
-            key=lambda x: datetime.strptime(x["date"], "%Y-%m-%d"), reverse=True
+            key=lambda x: (
+                safe_parse_date(x.get("date")) or datetime.min
+            ),
+            reverse=True
         )
         tag_page_html = tag_template.render(
             site=site_config,
@@ -590,9 +654,12 @@ def tag_pages(tag_template, site_config, tags=None, image_manifest=None):
         )
         tag_page_html = replace_images_with_processed(tag_page_html, image_manifest)
         output_path = os.path.join(tags_dir, f"{tag_name}.html")
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write(tag_page_html)
-        print(f"Generated tag page: tags/{tag_name}.html")
+        try:
+            with open(output_path, "w", encoding="utf-8") as f:
+                f.write(tag_page_html)
+            print(f"Generated tag page: tags/{tag_name}.html")
+        except OSError as e:
+            print(f"Error: Failed to write tag page {output_path}: {e}")
 
 
 def render_page(
@@ -627,11 +694,14 @@ def render_page(
         )
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(final_html)
-    print(
-        f"Generated: {page_config['url'] if page_config['url'] != '/' else '/index.html'}"
-    )
+    try:
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(final_html)
+        print(
+            f"Generated: {page_config['url'] if page_config['url'] != '/' else '/index.html'}"
+        )
+    except OSError as e:
+        print(f"Error: Failed to write page {output_path}: {e}")
 
 
 
@@ -932,33 +1002,23 @@ def main():
             has_order = any(x.get("order") is not None for x in items)
             
             if has_date:
-                 items.sort(
-                    key=lambda x: (
-                        datetime.strptime(x["date"], "%Y-%m-%d")
-                        if x.get("date") and isinstance(x.get("date"), str)
-                        else datetime.min
-                    ),
-                    reverse=True,
-                )
+                     items.sort(
+                        key=lambda x: (
+                            safe_parse_date(x.get("date")) or datetime.min
+                        ),
+                        reverse=True,
+                    )
             elif has_order:
                  items.sort(key=lambda x: x.get("order", 999))
             else:
                  pass
 
-        # Prepare pluralized context keys
-        # e.g. post -> posts, team-member -> team_members
         context_data = {}
         for k, v in collections.items():
             w = k.replace("-", "_") + "s"
             context_data[w] = v
 
         for page in pages:
-            # Skip items that are just data collections if needed?
-            # The user previously had explicit skips for team-member/doggo-profile.
-            # If we want to be fully agnostic, we should probably NOT skip them unless they don't have a template.
-            # render_page checks for template availability and skips if missing.
-            # So it is safe to just try rendering everything.
-            
             render_page(
                 page["data"],
                 page["content"],
@@ -981,9 +1041,13 @@ def main():
 
         sitemap_template = env.get_template("sitemap.xml.j2")
         sitemap_xml = sitemap_template.render(site=site_config, pages=sitemap_list)
-        with open(os.path.join(OUTPUT_DIR, "sitemap.xml"), "w") as f:
-            f.write(sitemap_xml)
-        print("Generated sitemap.xml")
+        sitemap_xml = sitemap_template.render(site=site_config, pages=sitemap_list)
+        try:
+            with open(os.path.join(OUTPUT_DIR, "sitemap.xml"), "w") as f:
+                f.write(sitemap_xml)
+            print("Generated sitemap.xml")
+        except OSError as e:
+            print(f"Error: Failed to write sitemap.xml: {e}")
 
 
 if __name__ == "__main__":
