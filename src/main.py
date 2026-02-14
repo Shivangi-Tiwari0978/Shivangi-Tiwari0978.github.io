@@ -125,46 +125,11 @@ def clean_output(directory):
                 os.remove(path)
                 print(f"Deleted file: {path}")
             elif os.path.isdir(path):
-                shutil.rmtree(path)
+                shutil.rmtree(path, onerror=_on_rm_error)
                 print(f"Deleted directory: {path}")
         except Exception as e:
             print(f"Failed to delete {path}: {e}")
 
-<<<<<<< HEAD
-    print("Cleanup complete.")
-=======
-            if delete_file:
-                file_path = os.path.join(root, filename)
-                if os.path.exists(file_path):
-                    try:
-                        os.remove(file_path)
-                        removed_any = True
-                        print(f"Deleted: {file_path}")
-                    except PermissionError:
-                        try:
-                            os.chmod(file_path, stat.S_IWRITE)
-                            os.remove(file_path)
-                            removed_any = True
-                            print(f"Deleted after chmod: {file_path}")
-                        except Exception as e:
-                            print(f"Warning: Could not delete {file_path}: {e}")
-
-        if rel_root and top_level not in preserved_roots and not os.listdir(root):
-            try:
-                os.rmdir(root)
-                removed_any = True
-                print(f"Deleted empty directory: {root}")
-            except OSError:
-                try:
-                    shutil.rmtree(root, onerror=_on_rm_error)
-                    removed_any = True
-                    print(f"Deleted directory via rmtree: {root}")
-                except Exception as e:
-                    print(f"Warning: Could not remove directory {root}: {e}")
-
-    if not removed_any:
-        print("No generated files found to delete.")
->>>>>>> 1e5dbab (Fixed build systems for deployment.)
 
 
 def has_file_changed(filepath, cache_dir=".cache"):
