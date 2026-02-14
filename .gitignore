@@ -13,3 +13,5 @@ package-lock.json
 .venv
 dist
 .venv/*
+
+!assets/images/Solo_1.jpg
