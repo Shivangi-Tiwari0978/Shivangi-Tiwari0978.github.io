@@ -8,6 +8,18 @@ import { fileURLToPath } from 'url';
 import YAML from 'yaml';
 import glob from 'fast-glob';
 import { processImages } from './src/image-preprocess.mjs';
+import { spawnSync } from "child_process";
+
+function runPython(args = []) {
+  const result = spawnSync(pythonExecutable, ["src/main.py", ...args], {
+    stdio: "inherit",
+    shell: false
+  });
+
+  if (result.status !== 0) {
+    throw new Error("Python script failed");
+  }
+}
 
 dotenv.config();
 
@@ -123,11 +135,7 @@ const ensurePythonRequirements = () => {
 
 const runGenerateStyles = () => {
   try {
-    const output = execSync(`"${pythonExecutable}" src/main.py --generate-styles`);
-    const text = output.toString().trim();
-    if (text) {
-      console.log(text);
-    }
+    runPython(["--generate-styles"]);
   } catch (e) {
     console.error('[styles] failed to generate theme/font CSS.', e);
   }
@@ -151,8 +159,7 @@ runGenerateStyles();
 const handleExit = () => {
   console.log('\nCleaning up build files...');
   try {
-    const output = execSync(`"${pythonExecutable}" src/main.py --clean`);
-    console.log(output.toString().trim());
+    runPython(["--clean"]);
   } catch (e) {
     console.error("Cleanup script failed:", e);
   }
@@ -172,8 +179,7 @@ const py_build_plugin = () => {
     closeBundle() {
       console.log('Cleaning up root directory...');
       try {
-        const output = execSync(`"${pythonExecutable}" src/main.py --clean`);
-        console.log(output.toString().trim());
+       runPython(["--clean"]);
       } catch (e) {
         console.error('Failed to cleanup:', e);
       }
@@ -184,13 +190,10 @@ const py_build_plugin = () => {
       };
 
       const build = (file = null) => {
-        const command = file
-          ? `"${pythonExecutable}" src/main.py --file ${file}`
-          : `"${pythonExecutable}" src/main.py`;
 
         try {
-          const output = execSync(command);
-          console.log(output.toString().trim());
+          if (file) runPython(["--file", file]);
+          else runPython();
 
           server.ws.send({ type: 'full-reload', path: "*" });
           ready = true;
@@ -256,13 +259,7 @@ export default defineConfig(async ({ command }) => {
 
   if (command === 'build') {
     console.log('Buiding static pages for production');
-    try {
-      const output = execSync(`${pythonExecutable} src/main.py`);
-      console.log(output.toString().trim());
-    } catch (e) {
-      console.error('Failed to generate static files:', e);
-      throw e;
-    }
+    runPython();
   }
 
   const inputFiles = glob.sync(['**/*.html', '!dist/**', '!node_modules/**', '!**/.venv/**', '!templates/**']);

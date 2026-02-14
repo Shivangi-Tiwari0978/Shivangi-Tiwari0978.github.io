@@ -19,6 +19,7 @@ except ImportError:
     pass
 from pygments.formatters import HtmlFormatter
 from pygments.util import ClassNotFound
+import stat
 
 DEFAULT_PYGMENTS_THEME = "native"
 TEMPLATE_DIR = "templates"
@@ -41,6 +42,21 @@ def load_previous_slugs():
             return set(json.load(f))
     except (FileNotFoundError, json.JSONDecodeError):
         return set()
+
+
+def _on_rm_error(func, path, exc_info):
+    """Onerror handler for shutil.rmtree to fix read-only files on Windows.
+
+    Attempts to set the file writable and retries the failed function.
+    """
+    try:
+        os.chmod(path, stat.S_IWRITE)
+    except Exception:
+        pass
+    try:
+        func(path)
+    except Exception as e:
+        print(f"Warning: Failed to remove {path}: {e}")
 
 
 def save_current_slugs(slugs):
@@ -114,7 +130,41 @@ def clean_output(directory):
         except Exception as e:
             print(f"Failed to delete {path}: {e}")
 
+<<<<<<< HEAD
     print("Cleanup complete.")
+=======
+            if delete_file:
+                file_path = os.path.join(root, filename)
+                if os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                        removed_any = True
+                        print(f"Deleted: {file_path}")
+                    except PermissionError:
+                        try:
+                            os.chmod(file_path, stat.S_IWRITE)
+                            os.remove(file_path)
+                            removed_any = True
+                            print(f"Deleted after chmod: {file_path}")
+                        except Exception as e:
+                            print(f"Warning: Could not delete {file_path}: {e}")
+
+        if rel_root and top_level not in preserved_roots and not os.listdir(root):
+            try:
+                os.rmdir(root)
+                removed_any = True
+                print(f"Deleted empty directory: {root}")
+            except OSError:
+                try:
+                    shutil.rmtree(root, onerror=_on_rm_error)
+                    removed_any = True
+                    print(f"Deleted directory via rmtree: {root}")
+                except Exception as e:
+                    print(f"Warning: Could not remove directory {root}: {e}")
+
+    if not removed_any:
+        print("No generated files found to delete.")
+>>>>>>> 1e5dbab (Fixed build systems for deployment.)
 
 
 def has_file_changed(filepath, cache_dir=".cache"):
@@ -911,7 +961,7 @@ def main():
             if slug != "index":
                 out_dir = os.path.join(OUTPUT_DIR, slug)
                 if os.path.isdir(out_dir):
-                    shutil.rmtree(out_dir)
+                    shutil.rmtree(out_dir, onerror=_on_rm_error)
                     print(f"Removed deleted page output: {out_dir}")
 
             if os.path.exists(PAGE_SLUG_CACHE):
@@ -987,8 +1037,11 @@ def main():
                  continue
              out_dir = os.path.join(OUTPUT_DIR, slug)
              if os.path.isdir(out_dir):
-                 shutil.rmtree(out_dir, ignore_errors=True)
-                 print(f"Removed stale page directory: {out_dir}")
+                 try:
+                     shutil.rmtree(out_dir, onerror=_on_rm_error)
+                     print(f"Removed stale page directory: {out_dir}")
+                 except Exception as e:
+                     print(f"Warning: Could not remove stale page directory {out_dir}: {e}")
 
         save_current_slugs(current_slugs)
 
