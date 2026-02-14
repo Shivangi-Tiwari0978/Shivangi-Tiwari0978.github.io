@@ -112,5 +112,5 @@ navigation:
     url: "/"
   - name: "Blog"
     url: "/blog/"
-  - name: "About"
-    url: "/about/"
+  - name: "Trivia"
+    url: "/trivia/"
