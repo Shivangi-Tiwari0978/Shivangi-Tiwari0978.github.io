@@ -521,7 +521,7 @@ MARKDOWN_EXTENSIONS = [
     "attr_list",
     "sane_lists",
     "md_in_html",
-    TocExtension(permalink=True),
+    TocExtension(permalink=False),
 ]
 
 def build_markdown(pygments_theme, markdown_config=None):
